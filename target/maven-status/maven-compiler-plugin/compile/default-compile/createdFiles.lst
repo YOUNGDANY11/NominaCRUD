@@ -1,0 +1,6 @@
+com\mycompany\nominaa\conexion\ConexionDB.class
+com\mycompany\nominaa\Nominaa.class
+com\mycompany\nominaa\dao\EmpleadoDAO.class
+com\mycompany\nominaa\vista\Ventana.class
+com\mycompany\nominaa\modelo\Persona.class
+com\mycompany\nominaa\modelo\Empleado.class
