@@ -19,10 +19,11 @@ public class Ventana extends JFrame {
 
     JButton btnGuardar = new JButton("Guardar");
     JButton btnMostrar = new JButton("Mostrar");
-    JButton btnBuscar = new JButton("Buscar");
+    JButton btnBuscar = new JButton("Buscar por nombre");
+    JButton btnBuscarCedula = new JButton("Buscar por cedula");
     JButton btnActualizar = new JButton("Actualizar");
     JButton btnEliminar = new JButton("Eliminar");
-
+    
     JTable tabla;
     DefaultTableModel modelo;
 
@@ -60,6 +61,7 @@ public class Ventana extends JFrame {
         panelBotones.add(btnBuscar);
         panelBotones.add(btnActualizar);
         panelBotones.add(btnEliminar);
+        panelBotones.add(btnBuscarCedula);
 
         // TABLA
         modelo = new DefaultTableModel();
@@ -107,8 +109,25 @@ public class Ventana extends JFrame {
 
         // BUSCAR
         btnBuscar.addActionListener(e -> {
-
+            if(txtNombre.getText().isEmpty()){
+                JOptionPane.showMessageDialog(this,"Es requerida el nombre");
+            }
             List<String> lista = dao.buscarPorNombre(txtNombre.getText());
+
+            if(lista.isEmpty()){
+                JOptionPane.showMessageDialog(this,"Empleado no encontrado");
+            }else{
+                cargarTabla(lista);
+            }
+
+        });
+        
+        // BUSCAR POR CEDULA
+        btnBuscarCedula.addActionListener(e -> {
+            if(txtCedula.getText().isEmpty()){
+                JOptionPane.showMessageDialog(this,"Es requerida la cedula");
+            }
+            List<String> lista = dao.buscarPorCedula(Integer.parseInt(txtCedula.getText()));
 
             if(lista.isEmpty()){
                 JOptionPane.showMessageDialog(this,"Empleado no encontrado");

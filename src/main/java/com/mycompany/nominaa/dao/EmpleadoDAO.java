@@ -127,6 +127,41 @@ public class EmpleadoDAO {
         return lista;
     }
     
+    // BUSCAR POR NOMBRE
+    public ArrayList<String> buscarPorCedula(int nombre){
+
+        ArrayList<String> lista = new ArrayList<>();
+
+        try{
+
+            PreparedStatement ps = con.prepareStatement(
+                    "SELECT e.cedula,e.nombre,t.horas,n.salario " +
+                    "FROM empleado e " +
+                    "JOIN trabajo t ON e.cedula=t.cedula " +
+                    "JOIN nomina n ON e.cedula=n.cedula " +
+                    "WHERE e.cedula LIKE ?");
+
+            ps.setString(1,"%"+nombre+"%");
+
+            ResultSet rs = ps.executeQuery();
+
+            while(rs.next()){
+
+                lista.add(
+                        rs.getInt("cedula")+" | "+
+                        rs.getString("nombre")+" | "+
+                        rs.getInt("horas")+" horas | "+
+                        rs.getDouble("salario")
+                );
+            }
+
+        }catch(Exception ex){
+            System.out.println(ex);
+        }
+
+        return lista;
+    }
+    
     //Ver si la cedula existe
     public boolean existeCedula(int cedula){
 
