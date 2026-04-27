@@ -1,27 +1,68 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.mycompany.nominaa.dao;
 
-/**
- *
- * @author Dany
- */
 import com.mycompany.nominaa.conexion.ConexionDB;
 import com.mycompany.nominaa.modelo.Empleado;
 import java.sql.*;
 import java.util.ArrayList;
 
+/**
+ * DAO responsable de operaciones sobre la tabla 'empleado'
+ * 
+ * Técnica: Extract Class
+ * 
+ * Antes: EmpleadoDAO manejaba 3 tablas (empleado, trabajo, nomina) - Baja cohesión
+ * Después: EmpleadoDAO maneja SOLO tabla 'empleado' + coordina otros DAOs
+ * 
+ * Responsabilidad única:
+ * - Operaciones CRUD en tabla 'empleado' (cedula, nombre)
+ * - Coordinación con TrabajoDAO y NominaDAO
+ * - Consultas complejas (JOIN entre tablas)
+ * 
+ * SOLID Principles:
+ * - S: Una responsabilidad primaria (tabla empleado)
+ * - O: Cerrado a modificación, abierto a extensión
+ * - D: Depende de TrabajoDAO y NominaDAO (abstracciones)
+ * 
+ * ORDEN IMPORTANTE en operaciones:
+ * 
+ * INSERTAR:
+ * 1. empleadoDAO.insertar() → tabla empleado
+ * 2. trabajoDAO.insertar() → tabla trabajo
+ * 3. nominaDAO.insertar() → tabla nomina
+ * 
+ * ELIMINAR (inverso por claves foráneas):
+ * 1. nominaDAO.eliminar() → tabla nomina (primero)
+ * 2. trabajoDAO.eliminar() → tabla trabajo (segundo)
+ * 3. empleadoDAO.eliminar() → tabla empleado (tercero)
+ * 
+ * @author YOUNGDANY11
+ * @version 2.0 - Refactorizado: Extract Class
+ */
 public class EmpleadoDAO {
+    private Connection con;
+    private TrabajoDAO trabajoDAO;
+    private NominaDAO nominaDAO;
 
-    Connection con;
-
+    /**
+     * Constructor - inicializa DAOs y conexión
+     */
     public EmpleadoDAO(){
-        con = ConexionDB.conectar();
+        this.con = ConexionDB.conectar();
+        this.trabajoDAO = new TrabajoDAO();
+        this.nominaDAO = new NominaDAO();
     }
     
-    // INSERTAR
+    /**
+     * INSERTAR - Coordina inserción en 3 tablas
+     * 
+     * Orden importante:
+     * 1. Tabla empleado (clave primaria)
+     * 2. Tabla trabajo (clave foránea a empleado)
+     * 3. Tabla nomina (clave foránea a empleado)
+     * 
+     * @param e Empleado a insertar
+     * @return true si fue exitoso, false si hubo error
+     */
     public boolean insertar(Empleado e){
         try{
 
@@ -29,6 +70,7 @@ public class EmpleadoDAO {
                 return false;
             }
 
+            // 1. Insertar en tabla empleado
             PreparedStatement ps1 = con.prepareStatement(
                     "INSERT INTO empleado VALUES(?,?)");
 
@@ -36,31 +78,30 @@ public class EmpleadoDAO {
             ps1.setString(2,e.getNombre());
             ps1.executeUpdate();
 
-            PreparedStatement ps2 = con.prepareStatement(
-                    "INSERT INTO trabajo(cedula,horas,valorHora) VALUES(?,?,?)");
+            // 2. Delega a TrabajoDAO - INSERT en tabla trabajo
+            if(!trabajoDAO.insertar(e)) {
+                return false;
+            }
 
-            ps2.setInt(1,e.getCedula());
-            ps2.setInt(2,e.getHoras());
-            ps2.setDouble(3,e.getValorHora());
-            ps2.executeUpdate();
-
-            PreparedStatement ps3 = con.prepareStatement(
-                    "INSERT INTO nomina(cedula,salario) VALUES(?,?)");
-
-            ps3.setInt(1,e.getCedula());
-            ps3.setDouble(2,e.calcularSalario());
-            ps3.executeUpdate();
+            // 3. Delega a NominaDAO - INSERT en tabla nomina
+            if(!nominaDAO.insertar(e)) {
+                return false;
+            }
 
             return true;
 
         }catch(Exception ex){
-            System.out.println(ex);
+            System.out.println("❌ Error en EmpleadoDAO.insertar(): " + ex);
         }
 
         return false;
     }
 
-    // LISTAR
+    /**
+     * LISTAR - Consulta compleja con JOINs
+     * 
+     * @return Lista de empleados con sus datos de trabajo y salario
+     */
     public ArrayList<String> listar(){
 
         ArrayList<String> lista = new ArrayList<>();
@@ -86,13 +127,18 @@ public class EmpleadoDAO {
             }
 
         }catch(Exception ex){
-            System.out.println(ex);
+            System.out.println("❌ Error en EmpleadoDAO.listar(): " + ex);
         }
 
         return lista;
     }
 
-    // BUSCAR POR NOMBRE
+    /**
+     * BUSCAR POR NOMBRE
+     * 
+     * @param nombre nombre o parte del nombre a buscar
+     * @return Lista de empleados coincidentes
+     */
     public ArrayList<String> buscarPorNombre(String nombre){
 
         ArrayList<String> lista = new ArrayList<>();
@@ -121,14 +167,19 @@ public class EmpleadoDAO {
             }
 
         }catch(Exception ex){
-            System.out.println(ex);
+            System.out.println("❌ Error en EmpleadoDAO.buscarPorNombre(): " + ex);
         }
 
         return lista;
     }
     
-    // BUSCAR POR NOMBRE
-    public ArrayList<String> buscarPorCedula(int nombre){
+    /**
+     * BUSCAR POR CÉDULA
+     * 
+     * @param cedula cédula a buscar
+     * @return Lista con un empleado (si existe)
+     */
+    public ArrayList<String> buscarPorCedula(int cedula){
 
         ArrayList<String> lista = new ArrayList<>();
 
@@ -141,7 +192,7 @@ public class EmpleadoDAO {
                     "JOIN nomina n ON e.cedula=n.cedula " +
                     "WHERE e.cedula LIKE ?");
 
-            ps.setString(1,"%"+nombre+"%");
+            ps.setString(1,"%"+cedula+"%");
 
             ResultSet rs = ps.executeQuery();
 
@@ -156,13 +207,18 @@ public class EmpleadoDAO {
             }
 
         }catch(Exception ex){
-            System.out.println(ex);
+            System.out.println("❌ Error en EmpleadoDAO.buscarPorCedula(): " + ex);
         }
 
         return lista;
     }
     
-    //Ver si la cedula existe
+    /**
+     * Ver si la cédula existe en la tabla empleado
+     * 
+     * @param cedula cédula a verificar
+     * @return true si existe, false si no existe
+     */
     public boolean existeCedula(int cedula){
 
         boolean existe = false;
@@ -181,12 +237,23 @@ public class EmpleadoDAO {
             }
 
         }catch(Exception e){
-            System.out.println(e);
+            System.out.println("❌ Error en EmpleadoDAO.existeCedula(): " + e);
         }
 
         return existe;
     }
-    // ACTUALIZAR
+
+    /**
+     * ACTUALIZAR - Coordina actualización en 3 tablas
+     * 
+     * Orden importante:
+     * 1. Tabla empleado
+     * 2. Tabla trabajo
+     * 3. Tabla nomina (recalcula salario)
+     * 
+     * @param e Empleado a actualizar
+     * @return true si fue exitoso, false si hubo error
+     */
     public boolean actualizar(Empleado e){
 
         try{
@@ -195,6 +262,7 @@ public class EmpleadoDAO {
                 return false;
             }
 
+            // 1. Actualizar en tabla empleado
             PreparedStatement ps1 = con.prepareStatement(
                     "UPDATE empleado SET nombre=? WHERE cedula=?");
 
@@ -202,31 +270,36 @@ public class EmpleadoDAO {
             ps1.setInt(2,e.getCedula());
             ps1.executeUpdate();
 
-            PreparedStatement ps2 = con.prepareStatement(
-                    "UPDATE trabajo SET horas=?, valorHora=? WHERE cedula=?");
+            // 2. Delega a TrabajoDAO - UPDATE en tabla trabajo
+            if(!trabajoDAO.actualizar(e)) {
+                return false;
+            }
 
-            ps2.setInt(1,e.getHoras());
-            ps2.setDouble(2,e.getValorHora());
-            ps2.setInt(3,e.getCedula());
-            ps2.executeUpdate();
-
-            PreparedStatement ps3 = con.prepareStatement(
-                    "UPDATE nomina SET salario=? WHERE cedula=?");
-
-            ps3.setDouble(1,e.calcularSalario());
-            ps3.setInt(2,e.getCedula());
-            ps3.executeUpdate();
+            // 3. Delega a NominaDAO - UPDATE en tabla nomina (recalcula)
+            if(!nominaDAO.actualizar(e)) {
+                return false;
+            }
 
             return true;
 
         }catch(Exception ex){
-            System.out.println(ex);
+            System.out.println("❌ Error en EmpleadoDAO.actualizar(): " + ex);
         }
 
         return false;
     }
 
-    // ELIMINAR
+    /**
+     * ELIMINAR - Coordina eliminación en 3 tablas
+     * 
+     * ⚠️ ORDEN IMPORTANTE por claves foráneas:
+     * 1. Tabla nomina (referencia a empleado)
+     * 2. Tabla trabajo (referencia a empleado)
+     * 3. Tabla empleado (tabla principal)
+     * 
+     * @param cedula Cédula del empleado a eliminar
+     * @return true si fue exitoso, false si hubo error
+     */
     public boolean eliminar(int cedula){
 
         try{
@@ -235,28 +308,29 @@ public class EmpleadoDAO {
                 return false;
             }
 
-            PreparedStatement ps1 = con.prepareStatement(
-                    "DELETE FROM nomina WHERE cedula=?");
+            // ⚠️ ORDEN IMPORTANTE: Respetar claves foráneas
+            
+            // 1. Delega a NominaDAO - DELETE en tabla nomina PRIMERO
+            if(!nominaDAO.eliminar(cedula)) {
+                return false;
+            }
 
-            ps1.setInt(1,cedula);
-            ps1.executeUpdate();
+            // 2. Delega a TrabajoDAO - DELETE en tabla trabajo SEGUNDO
+            if(!trabajoDAO.eliminar(cedula)) {
+                return false;
+            }
 
-            PreparedStatement ps2 = con.prepareStatement(
-                    "DELETE FROM trabajo WHERE cedula=?");
-
-            ps2.setInt(1,cedula);
-            ps2.executeUpdate();
-
-            PreparedStatement ps3 = con.prepareStatement(
+            // 3. DELETE en tabla empleado TERCERO
+            PreparedStatement ps = con.prepareStatement(
                     "DELETE FROM empleado WHERE cedula=?");
 
-            ps3.setInt(1,cedula);
-            ps3.executeUpdate();
+            ps.setInt(1,cedula);
+            ps.executeUpdate();
 
             return true;
 
         }catch(Exception ex){
-            System.out.println(ex);
+            System.out.println("❌ Error en EmpleadoDAO.eliminar(): " + ex);
         }
 
         return false;

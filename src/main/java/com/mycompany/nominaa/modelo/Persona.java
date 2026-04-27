@@ -1,30 +1,39 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.mycompany.nominaa.modelo;
 
 /**
- *
- * @author Dany
+ * Interfaz Persona - Tease Apart Inheritance
+ * 
+ * Técnica: Tease Apart Inheritance
+ * 
+ * Antes: abstract class Persona mezclaba 2 responsabilidades
+ * 1. Identidad (cedula, nombre)
+ * 2. Nómina (calcularSalario)
+ * 
+ * Después: interface Persona solo maneja identidad
+ * - La responsabilidad de nómina está en CalculadoraSalario
+ * - La responsabilidad de composición está en Empleado
+ * 
+ * Beneficios:
+ * ✓ SRP: Cada interfaz una responsabilidad
+ * ✓ Múltiples implementaciones (PersonaImpl, PersonaExtendida)
+ * ✓ Bajo acoplamiento
+ * ✓ Flexible: puede cambiar en runtime
+ * 
+ * Implementaciones:
+ * - PersonaImpl: cedula + nombre básico
+ * - PersonaExtendida: cedula + nombre + email + telefono
+ * 
+ * @author YOUNGDANY11
+ * @version 2.0 - Tease Apart Inheritance
  */
-public abstract class Persona {
+public interface Persona {
+    /**
+     * @return Cédula del empleado
+     */
+    int getCedula();
 
-    protected int cedula;
-    protected String nombre;
-
-    public Persona(int cedula, String nombre){
-        this.cedula = cedula;
-        this.nombre = nombre;
-    }
-
-    public int getCedula(){
-        return cedula;
-    }
-
-    public String getNombre(){
-        return nombre;
-    }
-
-    public abstract double calcularSalario();
+    /**
+     * @return Nombre del empleado
+     */
+    String getNombre();
 }
